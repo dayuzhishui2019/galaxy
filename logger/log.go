@@ -105,7 +105,6 @@ func PathExists(path string) (bool, error) {
 }
 
 func LOG_DEBUG(vars ...interface{}) {
-	fmt.Println(vars...)
 	log.Debug(vars...)
 }
 
@@ -114,16 +113,13 @@ func LOG_TRACE(vars ...interface{}) {
 }
 
 func LOG_INFO(vars ...interface{}) {
-	fmt.Println(vars...)
 	log.Info(vars...)
 }
 
 func LOG_WARN(vars ...interface{}) {
-	fmt.Println(vars...)
 	log.Warn(vars...)
 }
 
 func LOG_ERROR(vars ...interface{}) {
-	fmt.Println(vars...)
 	log.Error(vars...)
 }
