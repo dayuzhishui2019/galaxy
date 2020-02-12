@@ -7,7 +7,10 @@ import (
 	"io"
 )
 
-const TASK_DELETED_FLAG = 99
+const TASK_STATUS_NEW = 0
+const TASK_STATUS_RUNNING = 1
+const TASK_STATUS_STOP = 2
+const TASK_STATUS_DELETED = 99
 
 type Task struct {
 	ID          string   `json:"id"`

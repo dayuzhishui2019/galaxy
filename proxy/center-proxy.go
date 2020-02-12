@@ -92,7 +92,7 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 	var unloadResourceTask []*model.Task
 	for _, t := range hr.Tasks {
 		oldT, ok := localTaskMap[t.ID]
-		if !ok || t.ResourceId != oldT.ResourceId {
+		if len(t.ResourceId) > 0 && (!ok || t.ResourceId != oldT.ResourceId || len(oldT.ResourceBytes) == 0) {
 			unloadResourceTask = append(unloadResourceTask, t)
 		}
 	}

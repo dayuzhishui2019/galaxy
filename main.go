@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dyzs/galaxy/server"
 	"dyzs/galaxy/util"
 	"github.com/json-iterator/go/extra"
 	"github.com/spf13/viper"
@@ -26,6 +27,9 @@ func main() {
 	extra.RegisterFuzzyDecoders()
 
 	logger.Init()
+
+	//初始化配置服务
+	go server.InitCofnigHttpServer()
 
 	//初始化调度服务
 	td := &dispatcher.TaskDispatcher{
