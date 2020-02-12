@@ -1,18 +1,60 @@
 package model
 
-const TASK_DELETED_FLAG = 1
+import (
+	"bytes"
+	"dyzs/galaxy/logger"
+	"encoding/csv"
+	"io"
+)
+
+const TASK_DELETED_FLAG = 99
 
 type Task struct {
-	ID          string   `json:"id" bson:"id"`
-	Name        string   `json:"name" bson:"name" binding:"required"`
-	TaskType    string   `json:"taskType" bson:"taskType" binding:"required"`
-	ManagePort  string   `json:"managePort" bson:"managePort" binding:"required"`
-	ExportPorts []string `json:"exportPorts" bson:"exportPorts"`
-	AllResource bool     `json:"allResource" bson:"allResource"`
-	ResourceIds []string `json:"resourceIds" bson:"resourceIds"`
-	Status      int      `json:"status" bson:"status"`
-	Config      string   `json:"config" bson:"config"`
-	DelFlag     int      `json:"delFlag" bson:"delFlag"`
-	CreateTime  int64    `json:"createTime" bson:"createTime"`
-	UpdateTime  int64    `json:"updateTime" bson:"updateTime"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Repository  string   `json:"repository"`
+	PreviousTag string   `json:"previousTag"`
+	CurrentTag  string   `json:"currentTag"`
+	AccessType  string   `json:"accessType"`
+	ManagePort  string   `json:"managePort"`
+	ExportPorts []string `json:"exportPorts"`
+	AllResource bool     `json:"allResource"`
+	ResourceId  string   `json:"resourceId"`
+	Status      int      `json:"status"`
+	Config      string   `json:"config"`
+	DelFlag     int      `json:"delFlag"`
+	CreateTime  int64    `json:"createTime"`
+	UpdateTime  int64    `json:"updateTime"`
+
+	ResourceBytes []byte `json:"resourceBytes"`
+	resourceCache []*Resource
+}
+
+func (task *Task) GetResources() []*Resource {
+	if len(task.resourceCache) > 0 {
+		return task.resourceCache
+	}
+	if len(task.ResourceBytes) > 0 {
+		csvReader := csv.NewReader(bytes.NewReader(task.ResourceBytes))
+		for {
+			row, err := csvReader.Read()
+			if err != nil && err != io.EOF {
+				logger.LOG_WARN("资源csv解析异常，", err)
+				break
+			}
+			if err == io.EOF {
+				break
+			}
+			if len(row) < 6 {
+				continue
+			}
+			task.resourceCache = append(task.resourceCache, &Resource{
+				ID:   row[0],
+				Name: row[1],
+				GbID: row[2],
+				Type: row[3],
+			})
+		}
+	}
+	return task.resourceCache
 }

@@ -1,168 +1,103 @@
 package concurrent
-
 import (
+	"context"
 	"errors"
-	"fmt"
 	"sync"
-	"sync/atomic"
 )
-
+//通用任务协程池
 var ErrExexcutorCapacity = errors.New("协程池容量不合法")
 var ErrExexcutorClosed = errors.New("协程池已关闭")
-
 type Task interface {
 	Handle()
 }
-
 type Executor struct {
 	sync.Mutex
 	capacity int
-	active   int32
-	workers  []*worker
+	active   int
+	workers  chan *worker
+	ctx      context.Context
+	cancel   context.CancelFunc
 	closed   bool
 }
-
-func NewExecutor(capacity int) (e *Executor, err error) {
+func (e *Executor) IsClose() bool {
+	return e.closed
+}
+func NewExecutor(capacity int) *Executor {
 	if capacity <= 0 {
-		return nil, ErrExexcutorCapacity
+		capacity = 1
 	}
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Executor{
 		capacity: capacity,
-	}, nil
+		workers:  make(chan *worker, capacity),
+		ctx:      ctx,
+		cancel:   cancel,
+	}
 }
-
 func (e *Executor) getWorker() *worker {
-	var w *worker
-	var wait bool
-	e.Lock()
-	n := len(e.workers) - 1
-	//have active
-	if n >= 0 {
-		w = e.workers[n]
-		e.workers[n] = nil
-		e.workers = e.workers[:n]
-	} else {
-		wait = e.activing() >= e.capacity
+	select {
+	case w := <-e.workers:
+		return w
+	default:
 	}
-	e.Unlock()
-	//wait
-	if wait {
-		for {
-			e.Lock()
-			n := len(e.workers) - 1
-			if n < 0 {
-				e.Unlock()
-				continue
-			}
-			w = e.workers[n]
-			e.workers[n] = nil
-			e.workers = e.workers[:n]
-			e.Unlock()
-			return w
-		}
-	}
-	if w == nil {
-		//create
-		w = &worker{
+	if e.active < e.capacity {
+		e.active++
+		w := &worker{
 			e:        e,
 			taskChan: make(chan func()),
 		}
 		w.run()
-		e.incActive()
+		return w
 	}
-	return w
+	return <-e.workers
 }
 func (e *Executor) recoverWorker(w *worker) {
-	e.Lock()
-	if !e.closed {
-		e.workers = append(e.workers, w)
-	} else {
-		w.release()
-	}
-	e.Unlock()
+	e.workers <- w
 }
-
 func (e *Executor) Submit(task func()) error {
 	if e.closed {
 		return ErrExexcutorClosed
 	}
 	w := e.getWorker()
-	fmt.Println("<-")
 	w.taskChan <- task
-	fmt.Println("<- end")
 	return nil
 }
-
-func (e *Executor) SubmitSyncBatch(tasks []func()) error {
+func (e *Executor) SubmitSyncBatch(tasks []func()) (err error) {
 	var wg sync.WaitGroup
 	wg.Add(len(tasks))
 	for _, t := range tasks {
-		err := func(cb func()) error {
-			err := e.Submit(func() {
-				fmt.Println("done 0")
-				cb()
-				fmt.Println("done 1")
-				wg.Done()
-				fmt.Println("done 2")
-			})
-			return err
-		}(t)
+		cb := t
+		err = e.Submit(func() {
+			cb()
+			wg.Done()
+		})
 		if err != nil {
-			return err
+			wg.Done()
 		}
 	}
 	wg.Wait()
-	return nil
+	return
 }
-
 func (e *Executor) Close() {
-	e.Lock()
 	e.closed = true
-	for _, w := range e.workers {
-		w.release()
-	}
-	e.Unlock()
+	e.cancel()
 }
-
-func (e *Executor) activing() int {
-	return int(atomic.LoadInt32(&e.active))
-}
-
-func (e *Executor) incActive() {
-	atomic.AddInt32(&e.active, 1)
-}
-
-func (e *Executor) decActive() {
-	atomic.AddInt32(&e.active, -1)
-}
-
 type worker struct {
 	e        *Executor
 	taskChan chan func()
 }
-
 func (w *worker) run() {
 	go func() {
 		for {
 			select {
+			case <-w.e.ctx.Done():
+				return
 			case task := <-w.taskChan:
-				fmt.Println("WORK",task)
-				if task == nil {
-					fmt.Println("111")
-					w.e.decActive()
-					return
+				if task != nil {
+					task()
 				}
-				fmt.Println("222")
-				task()
-				fmt.Println("RECOVER")
 				w.e.recoverWorker(w)
 			}
 		}
-	}()
-}
-
-func (w *worker) release() {
-	go func() {
-		w.taskChan <- nil
 	}()
 }

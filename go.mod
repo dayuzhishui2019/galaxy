@@ -1,4 +1,4 @@
-module sunset/data-hub
+module dyzs/galaxy
 
 go 1.13
 

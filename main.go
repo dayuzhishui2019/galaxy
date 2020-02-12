@@ -1,16 +1,25 @@
 package main
 
 import (
+	"dyzs/galaxy/util"
 	"github.com/json-iterator/go/extra"
 	"github.com/spf13/viper"
+	"log"
 	"os"
 	"os/signal"
-	_ "sunset/data-hub/context"
-	"sunset/data-hub/db/mongo"
-	"sunset/data-hub/dispatcher"
-	"sunset/data-hub/logger"
-	"sunset/data-hub/route"
+	"dyzs/galaxy/dispatcher"
+	"dyzs/galaxy/logger"
 )
+
+func init() {
+	configPath := util.GetAppPath() + "config.yml"
+	logger.LOG_INFO("configPath:", configPath)
+	viper.SetConfigFile(configPath)
+	viper.SetConfigType("yaml")
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatal("Fail to read config file :", err)
+	}
+}
 
 func main() {
 
@@ -18,17 +27,11 @@ func main() {
 
 	logger.Init()
 
-	//数据库连接
-	_ = mongo.Connect()
-
-	//初始化配置服务
-	go route.InitCofnigHttpServer()
-
 	//初始化调度服务
-	d := &dispatcher.TaskDispatcher{
+	td := &dispatcher.TaskDispatcher{
 		Host: viper.GetString("host"),
 	}
-	go d.Init()
+	go td.Init()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, os.Kill)

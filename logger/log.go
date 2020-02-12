@@ -105,21 +105,36 @@ func PathExists(path string) (bool, error) {
 }
 
 func LOG_DEBUG(vars ...interface{}) {
+	if log.GetLevel()==log.DebugLevel{
+		fmt.Println(vars...)
+	}
 	log.Debug(vars...)
 }
 
 func LOG_TRACE(vars ...interface{}) {
+	if log.GetLevel()==log.DebugLevel{
+		fmt.Println(vars...)
+	}
 	log.Trace(vars...)
 }
 
 func LOG_INFO(vars ...interface{}) {
+	if log.GetLevel()==log.DebugLevel{
+		fmt.Println(vars...)
+	}
 	log.Info(vars...)
 }
 
 func LOG_WARN(vars ...interface{}) {
+	if log.GetLevel()==log.DebugLevel{
+		fmt.Println(vars...)
+	}
 	log.Warn(vars...)
 }
 
 func LOG_ERROR(vars ...interface{}) {
+	if log.GetLevel()==log.DebugLevel{
+		fmt.Println(vars...)
+	}
 	log.Error(vars...)
 }

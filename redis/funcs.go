@@ -32,6 +32,23 @@ func (c Cache) StringGet(name string, v interface{}) error {
 	return err
 }
 
+// 获取 字符串类型的值
+func (c Cache) StringGetBytes(name string) (bytes []byte, err error) {
+	conn := c.pool.Get()
+	defer conn.Close()
+	if conn.Err() != nil {
+		return nil, conn.Err()
+	}
+	temp, err := redis.Bytes(conn.Do("Get", name))
+	if err != nil {
+		if errors.Is(err, redis.ErrNil) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return temp, nil
+}
+
 func (c Cache) stringGetTest() {
 	//var need []string
 	//var need int32

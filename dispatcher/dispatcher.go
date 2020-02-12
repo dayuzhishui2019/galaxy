@@ -3,43 +3,40 @@ package dispatcher
 import (
 	bytes2 "bytes"
 	"context"
+	"dyzs/galaxy/constants"
+	"dyzs/galaxy/logger"
+	"dyzs/galaxy/model"
+	"dyzs/galaxy/proxy"
+	"dyzs/galaxy/redis"
+	"dyzs/galaxy/util"
 	"errors"
 	"fmt"
-	"github.com/globalsign/mgo/bson"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
-	"sunset/data-hub/constants"
-	"sunset/data-hub/db/mongo"
-	"sunset/data-hub/logger"
-	"sunset/data-hub/model"
-	"sunset/data-hub/util"
 	"sync"
 	"time"
 )
 
-var TASK_TYPE_IMAGE = map[string]string{
-	"1400server": "sunset/data-stream",
-	"1400client": "sunset/data-stream",
-}
-
 var TASK_CONTAINER_PREFIX = "task_"
 
-var client *http.Client
-
 type TaskDispatcher struct {
+	httpClient  *http.Client
+	redisClient *redis.Cache
+
 	sync.Mutex
-	Host        string
-	ctx         context.Context
-	cancel      context.CancelFunc
-	taskMap     map[string]*model.Task
-	taskBinding map[string]*Worker
-	updateTime  int64
+	Host          string
+	ctx           context.Context
+	cancel        context.CancelFunc
+	taskMap       map[string]*model.Task
+	taskResources map[string][]*model.Resource
+	taskBinding   map[string]*Worker
+	updateTime    int64
 }
 
 func (td *TaskDispatcher) Init() {
-	client = &http.Client{
+	td.httpClient = &http.Client{
 		Transport: &http.Transport{
 			MaxIdleConns:        20,
 			MaxIdleConnsPerHost: 5,
@@ -48,50 +45,84 @@ func (td *TaskDispatcher) Init() {
 		},
 		Timeout: 3 * time.Second,
 	}
+	td.redisClient = redis.NewRedisCache(0, viper.GetString("redis.addr"), redis.FOREVER)
 	td.ctx, td.cancel = context.WithCancel(context.Background())
 	td.taskMap = make(map[string]*model.Task)
 	td.taskBinding = make(map[string]*Worker)
+	//从本地redis获取任务信息
+	td.loadLocalTasks()
+	//轮询更新任务
 	go td.loopFindTask()
+	//绑定任务
 	go td.loopBindTask()
 }
+
+func (td *TaskDispatcher) loadLocalTasks() {
+	localTasks := make([]*model.Task, 0)
+	err := td.redisClient.StringGet(constants.REDIS_KEY_TASKS, &localTasks)
+	if err != nil {
+		logger.LOG_WARN("从redis获取任务失败", err)
+		return
+	}
+	if len(localTasks) == 0 {
+		logger.LOG_WARN("从redis获取任务0个")
+		return
+	}
+	td.refreshTasks(localTasks)
+}
+
 func (td *TaskDispatcher) loopFindTask() {
+	centerProxy := proxy.NewCenterProxy()
 	for {
-		time.Sleep(10 * time.Second)
+		time.Sleep(5 * time.Second)
 		select {
 		case <-td.ctx.Done():
 			return
 		default:
 		}
-		client, err := mongo.Dataset(constants.DB_DATASET_TASK)
+		hr, err := centerProxy.Heart(td.getLocalTasks())
 		if err != nil {
-			logger.LOG_WARN("获取mongo连接异常，", err)
+			logger.LOG_WARN("发送中心心跳请求失败，", err)
 			continue
 		}
-		tasks := make([]*model.Task, 0)
-		pipeM := []bson.M{}
-		pipeM = append(pipeM, bson.M{"$match": bson.M{"updateTime": bson.M{"$gt": td.updateTime}}})
-		pipeM = append(pipeM, bson.M{"$sort": bson.M{"updateTime": -1}})
-		err = client.Pipe(pipeM).All(&tasks)
-		if err != nil {
-			logger.LOG_WARN("查询最新任务失败，", err)
-			continue
-		}
-		if len(tasks) == 0 {
-			logger.LOG_WARN("无任务更新，", err)
-			continue
-		}
-		if len(tasks) > 0 {
-			logger.LOG_INFO("任务更新，数量：", len(tasks))
-			td.Lock()
-			for _, t := range tasks {
-				if t.DelFlag == model.TASK_DELETED_FLAG {
-					delete(td.taskMap, t.ID)
-				} else {
-					td.taskMap[t.ID] = t
-				}
+		td.refreshTasks(hr.Tasks)
+	}
+}
+
+func (td *TaskDispatcher) getLocalTasks() (localTasks []*model.Task) {
+	td.Lock()
+	for _, v := range td.taskMap {
+		localTasks = append(localTasks, v)
+	}
+	td.Unlock()
+	return localTasks
+}
+
+func (td *TaskDispatcher) refreshTasks(tasks []*model.Task) {
+	if len(tasks) == 0 {
+		logger.LOG_INFO("无任务更新")
+		return
+	}
+	if len(tasks) > 0 {
+		logger.LOG_INFO("任务更新，数量：", len(tasks))
+		td.Lock()
+		for _, t := range tasks {
+			if t.Status == model.TASK_DELETED_FLAG {
+				delete(td.taskMap, t.ID)
+			} else {
+				td.taskMap[t.ID] = t
 			}
-			td.updateTime = tasks[0].UpdateTime
-			td.Unlock()
+		}
+		td.updateTime = tasks[0].UpdateTime
+		td.Unlock()
+		//save to redis
+		var localTasks []*model.Task
+		for _, v := range td.taskMap {
+			localTasks = append(localTasks, v)
+		}
+		err := td.redisClient.StringSet(constants.REDIS_KEY_TASKS, localTasks)
+		if err != nil {
+			logger.LOG_ERROR("任务缓存入redis异常，", err)
 		}
 	}
 }
@@ -214,7 +245,7 @@ func (w *Worker) keepaliveTask() {
 				continue
 			}
 			err = util.Retry(func() error {
-				res, err := client.Post(fmt.Sprintf("http://%s:%s/mapi/init", w.td.Host, wt.ManagePort), "application/json", bytes2.NewReader(taskBytes))
+				res, err := w.td.httpClient.Post(fmt.Sprintf("http://%s:%s/mapi/init", TASK_CONTAINER_PREFIX+wt.ID, "7777"), "application/json", bytes2.NewReader(taskBytes))
 				if err != nil {
 					return err
 				}
@@ -244,8 +275,8 @@ func (w *Worker) keepaliveTask() {
 		}
 		//keep alive
 		err := util.Retry(func() error {
-			logger.LOG_INFO("keepalive:", fmt.Sprintf("http://%s:%s/mapi/keepAlive", w.td.Host, wt.ManagePort))
-			res, err := client.Post(fmt.Sprintf("http://%s:%s/mapi/keepAlive", w.td.Host, wt.ManagePort), "text/plain", nil)
+			logger.LOG_INFO("keepalive:", fmt.Sprintf("http://%s:%s/mapi/keepAlive", TASK_CONTAINER_PREFIX+wt.ID, "7777"))
+			res, err := w.td.httpClient.Post(fmt.Sprintf("http://%s:%s/mapi/keepAlive", TASK_CONTAINER_PREFIX+wt.ID, "7777"), "text/plain", nil)
 			if err != nil {
 				return err
 			}
@@ -278,12 +309,11 @@ func (w *Worker) startTask() {
 	w.taskInited = false
 	w.Unlock()
 	task := w.task
-	img, ok := TASK_TYPE_IMAGE[task.TaskType]
-	if !ok {
-		logger.LOG_WARN("未找到任务类型对应的镜像，taskType:", task.TaskType)
+	if task.Repository == "" {
+		logger.LOG_WARN("未找到任务类型对应的镜像，taskType:", task.AccessType)
 		return
 	}
-	fmt.Println("启动进程：", w.task.Name)
+	logger.LOG_WARN("启动进程：", w.task.Name)
 	//stop container
 	cmdRes, err := util.ExecCmd(fmt.Sprintf("docker stop %s", TASK_CONTAINER_PREFIX+task.ID))
 	if err != nil {
@@ -293,13 +323,33 @@ func (w *Worker) startTask() {
 	}
 	time.Sleep(5 * time.Second)
 	//create container
-	exportPorts := " -p " + task.ManagePort + ":" + task.ManagePort + " "
+	img := task.Repository
+	if task.CurrentTag != "" {
+		img += ":" + task.CurrentTag
+	}
+	taskDir := TASK_CONTAINER_PREFIX + task.ID
+	var cmd bytes2.Buffer
+	cmd.WriteString("docker run --rm -d ")
+	//ports
 	if len(task.ExportPorts) > 0 {
 		for _, p := range task.ExportPorts {
-			exportPorts += " -p " + p + ":" + p + " "
+			cmd.WriteString(" -p " + p + ":" + p + " ")
 		}
 	}
-	cmdRes, err = util.ExecCmd(fmt.Sprintf("docker run --rm -d %s --network app --name=%s -e MANAGE_PORT=%s -e HOST=%s -e LOG_LEVEL=%s -v /home/data-hub/logs/%s:/logs %s", exportPorts, TASK_CONTAINER_PREFIX+task.ID, task.ManagePort, viper.GetString("host"), viper.GetString("log.level"), "task_"+task.ID, img))
+	//network
+	cmd.WriteString(" --network app ")
+	//name
+	cmd.WriteString(" --name=" + taskDir)
+	//env
+	cmd.WriteString(" -e MANAGE_PORT=7777 ")
+	cmd.WriteString(" -e HOST=" + viper.GetString("host") + " ")
+	cmd.WriteString(" -e LOG_LEVEL=" + viper.GetString("log.level") + " ")
+	//volume
+	cmd.WriteString(" -v /home/data-hub/logs/" + taskDir + ":/logs ")
+	//image
+	cmd.WriteString(img)
+
+	cmdRes, err = util.ExecCmd(cmd.String())
 	if err != nil {
 		logger.LOG_WARN("启动容器异常：", err)
 		return
