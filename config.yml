@@ -1,7 +1,8 @@
 host: 192.168.100.100
 port: 8200
-sn: 123456789876543210
 model: MDDS-E1
+sn: "VMware-56 4d d3 2e bf ee 69 b9-de 68 90 9c 9b 60 b9 7b"
+snCmd: "dmidecode -t 1 | grep 'Serial Number'"
 center:
   host: 106.12.218.245
   managePort: 18080

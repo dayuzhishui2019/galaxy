@@ -116,7 +116,7 @@ func (td *TaskDispatcher) refreshTasks(tasks []*model.Task) {
 		return
 	}
 	if len(tasks) > 0 {
-		logger.LOG_INFO("任务更新，数量：", len(tasks))
+		logger.LOG_WARN("任务更新，数量：", len(tasks))
 		td.Lock()
 		for _, t := range tasks {
 			oldTask, ok := td.taskMap[t.ID]
