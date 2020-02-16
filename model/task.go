@@ -19,16 +19,15 @@ type Task struct {
 	PreviousTag string   `json:"previousTag"`
 	CurrentTag  string   `json:"currentTag"`
 	AccessType  string   `json:"accessType"`
-	ManagePort  string   `json:"managePort"`
 	ExportPorts []string `json:"exportPorts"`
 	AllResource bool     `json:"allResource"`
 	ResourceId  string   `json:"resourceId"`
 	Status      int      `json:"status"`
-	Config      string   `json:"config"`
-	DelFlag     int      `json:"delFlag"`
+	AccessParam      string   `json:"accessParam"`
 	CreateTime  int64    `json:"createTime"`
 	UpdateTime  int64    `json:"updateTime"`
 
+	NodeID        string `json:"nodeId"`
 	ResourceBytes []byte `json:"resourceBytes"`
 	resourceCache []*Resource
 }
@@ -48,15 +47,10 @@ func (task *Task) GetResources() []*Resource {
 			if err == io.EOF {
 				break
 			}
-			if len(row) < 6 {
+			if len(row) == 0 {
 				continue
 			}
-			task.resourceCache = append(task.resourceCache, &Resource{
-				ID:   row[0],
-				Name: row[1],
-				GbID: row[2],
-				Type: row[3],
-			})
+			task.resourceCache = append(task.resourceCache, CsvToResource(row))
 		}
 	}
 	return task.resourceCache

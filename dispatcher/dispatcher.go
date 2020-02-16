@@ -91,6 +91,10 @@ func (td *TaskDispatcher) loopFindTask() {
 			logger.LOG_WARN("发送中心心跳请求失败，", err)
 			continue
 		}
+		err = td.redisClient.StringSet(constants.REDIS_KEY_BOXID, hr.Node.Id)
+		if err != nil {
+			logger.LOG_ERROR("BoxId缓存入redis异常，", err)
+		}
 		td.refreshTasks(hr.Tasks)
 	}
 }

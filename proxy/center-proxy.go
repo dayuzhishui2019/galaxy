@@ -3,10 +3,13 @@ package proxy
 import (
 	"bytes"
 	"dyzs/galaxy/concurrent"
+	"dyzs/galaxy/constants"
 	"dyzs/galaxy/logger"
 	"dyzs/galaxy/model"
+	"dyzs/galaxy/redis"
 	"encoding/json"
 	"errors"
+	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/viper"
 	"io"
@@ -20,6 +23,8 @@ type HttpCenterProxy struct {
 	address  string
 	client   *http.Client
 	executor *concurrent.Executor
+
+	localCenterHost string
 }
 
 type HttpResponseWrapper struct {
@@ -42,16 +47,29 @@ func (hcp *HttpCenterProxy) Init() {
 }
 
 func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, err error) {
-	address := viper.GetString("center.address")
+	host := viper.GetString("center.host")
+	managePort := viper.GetString("center.managePort")
 	urlHeart := viper.GetString("center.url-heart")
-	if address == "" {
+	if host == "" {
 		return nil, errors.New("配置中心地址为空")
+	}
+	if managePort == "" {
+		return nil, errors.New("配置中心管理端口为空")
 	}
 	if urlHeart == "" {
 		return nil, errors.New("配置中心心跳接口地址为空")
 	}
-	hcp.address = address
-
+	if hcp.localCenterHost != host {
+		redisClient := redis.NewRedisCache(0, viper.GetString("redis.addr"), redis.FOREVER)
+		err = redisClient.StringSet(constants.REDIS_KEY_CENTERHOST, host)
+		if err != nil {
+			logger.LOG_ERROR("BoxId缓存入redis异常，", err)
+		} else {
+			hcp.localCenterHost = host
+		}
+		_ = redisClient.Close()
+	}
+	hcp.address = host + ":" + managePort
 	var lastUpdateTime int64
 	localTaskMap := make(map[string]*model.Task)
 	for _, v := range localTasks {
@@ -60,7 +78,7 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 			lastUpdateTime = v.UpdateTime
 		}
 	}
-	res, err := hcp.client.Post(hcp.address+urlHeart+"?taskUpdateTime="+strconv.FormatInt(lastUpdateTime, 10), "application/json", hcp.generateHeartRequest())
+	res, err := hcp.client.Post("http://"+hcp.address+urlHeart+"?taskUpdateTime="+strconv.FormatInt(lastUpdateTime, 10), "application/json", hcp.generateHeartRequest())
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +109,11 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 	//请求资源（未获取过得和变更的）
 	var unloadResourceTask []*model.Task
 	for _, t := range hr.Tasks {
+		t.NodeID = hr.Node.Id
+
+		rrr, _ := jsoniter.Marshal(t)
+		fmt.Println(string(rrr))
+
 		oldT, ok := localTaskMap[t.ID]
 		if len(t.ResourceId) > 0 && (!ok || t.ResourceId != oldT.ResourceId || len(oldT.ResourceBytes) == 0) {
 			unloadResourceTask = append(unloadResourceTask, t)
@@ -120,7 +143,7 @@ func (hcp *HttpCenterProxy) loadResourcesOfTasks(tasks []*model.Task) {
 	for _, t := range tasks {
 		func(task *model.Task) {
 			requests = append(requests, func() {
-				res, err := hcp.client.Get(hcp.address + urlResource + "/" + task.ResourceId)
+				res, err := hcp.client.Get("http://" + hcp.address + urlResource + "/" + task.ResourceId)
 				if err != nil {
 					logger.LOG_WARN("获取任务资源异常，", err)
 					return

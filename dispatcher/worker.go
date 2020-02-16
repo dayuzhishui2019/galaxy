@@ -133,8 +133,8 @@ func (w *Worker) keepaliveTask() {
 		}
 		//keep alive
 		err := util.Retry(func() error {
-			logger.LOG_INFO("keepalive:", fmt.Sprintf("http://%s:%s/mapi/keepAlive", TASK_CONTAINER_PREFIX+wt.ID, "7777"))
-			res, err := w.td.httpClient.Post(fmt.Sprintf("http://%s:%s/mapi/keepAlive", TASK_CONTAINER_PREFIX+wt.ID, "7777"), "text/plain", nil)
+			logger.LOG_INFO("keepalive:", fmt.Sprintf("http://%s:%s/mapi/heart", TASK_CONTAINER_PREFIX+wt.ID, "7777"))
+			res, err := w.td.httpClient.Post(fmt.Sprintf("http://%s:%s/mapi/heart", TASK_CONTAINER_PREFIX+wt.ID, "7777"), "text/plain", nil)
 			if err != nil {
 				return err
 			}

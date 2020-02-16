@@ -3,10 +3,11 @@ port: 8200
 sn: 123456789876543210
 model: MDDS-E1
 center:
-  address: http://106.12.218.245:18080
+  host: 106.12.218.245
+  managePort: 18080
   heartInterval: 30
-  url-heart: /box/heart
-  url-resource: /task/resource
+  url-heart: /management/box/heart
+  url-resource: /management/task/resource
 log:
   level: debug
 redis:

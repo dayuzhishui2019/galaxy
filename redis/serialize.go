@@ -11,6 +11,9 @@ func Serialization(value interface{}) ([]byte, error) {
 	if bytes, ok := value.([]byte); ok {
 		return bytes, nil
 	}
+	if str, ok := value.(string); ok {
+		return []byte(str), nil
+	}
 
 	switch v := reflect.ValueOf(value); v.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
@@ -26,6 +29,10 @@ func Serialization(value interface{}) ([]byte, error) {
 func Deserialization(byt []byte, ptr interface{}) (err error) {
 	if bytes, ok := ptr.(*[]byte); ok {
 		*bytes = byt
+		return
+	}
+	if str, ok := ptr.(*string); ok {
+		*str = string(byt)
 		return
 	}
 	if v := reflect.ValueOf(ptr); v.Kind() == reflect.Ptr {

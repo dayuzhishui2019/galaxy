@@ -28,7 +28,7 @@ func (c Cache) StringGet(name string, v interface{}) error {
 		}
 		return err
 	}
-	err = Deserialization(temp, &v) // 反序列化
+	err = Deserialization(temp, v) // 反序列化
 	return err
 }
 
