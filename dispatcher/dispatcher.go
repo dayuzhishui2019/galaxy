@@ -1,7 +1,6 @@
 package dispatcher
 
 import (
-	"bytes"
 	"context"
 	"dyzs/galaxy/constants"
 	"dyzs/galaxy/logger"
@@ -126,7 +125,7 @@ func (td *TaskDispatcher) refreshTasks(tasks []*model.Task) {
 				continue
 			}
 			//新增或变更任务
-			if !ok || oldTask.UpdateTime != t.UpdateTime || oldTask.ResourceId != t.ResourceId || !bytes.Equal(oldTask.ResourceBytes, t.ResourceBytes) {
+			if !ok || oldTask.UpdateTime != t.UpdateTime || oldTask.ResourceId != t.ResourceId || oldTask.ResourceBytes != t.ResourceBytes {
 				td.taskMap[t.ID] = t
 			}
 		}

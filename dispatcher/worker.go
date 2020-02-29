@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -191,8 +193,17 @@ func (w *Worker) startTask() {
 	cmd.WriteString("docker run --rm -d ")
 	//ports
 	if len(task.ExportPorts) > 0 {
-		for _, p := range task.ExportPorts {
-			cmd.WriteString(" -p " + p + ":" + p + " ")
+		eps := make([]string, 0)
+		err := jsoniter.Unmarshal([]byte(task.ExportPorts), &eps)
+		if err != nil {
+			logger.LOG_WARN("端口映射解析异常：", err)
+			return
+		}
+		for _, p := range eps {
+			_, err := strconv.Atoi(strings.Trim(p, " "))
+			if err == nil {
+				cmd.WriteString(" -p " + p + ":" + p + " ")
+			}
 		}
 	}
 	//network
@@ -204,7 +215,7 @@ func (w *Worker) startTask() {
 	cmd.WriteString(" -e HOST=" + viper.GetString("host") + " ")
 	cmd.WriteString(" -e LOG_LEVEL=" + viper.GetString("log.level") + " ")
 	//volume
-	cmd.WriteString(" -v /home/data-hub/logs/" + taskDir + ":/logs ")
+	cmd.WriteString(" -v /home/dyzs/logs/" + taskDir + ":/logs ")
 	//image
 	cmd.WriteString(img)
 

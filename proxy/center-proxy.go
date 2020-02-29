@@ -78,7 +78,7 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 			lastUpdateTime = v.UpdateTime
 		}
 	}
-	res, err := hcp.client.Post("http://"+hcp.address+urlHeart+"?taskUpdateTime="+strconv.FormatInt(lastUpdateTime, 10), "application/json", hcp.generateHeartRequest())
+	res, err := hcp.client.Post("http://"+hcp.address+urlHeart+"?time="+strconv.FormatInt(lastUpdateTime, 10), "application/json", hcp.generateHeartRequest())
 	if err != nil {
 		return nil, err
 	}
@@ -117,6 +117,9 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 		oldT, ok := localTaskMap[t.ID]
 		if len(t.ResourceId) > 0 && (!ok || t.ResourceId != oldT.ResourceId || len(oldT.ResourceBytes) == 0) {
 			unloadResourceTask = append(unloadResourceTask, t)
+		}
+		if t.ResourceId == oldT.ResourceId && len(oldT.ResourceBytes) > 0 {
+			t.ResourceBytes = oldT.ResourceBytes
 		}
 	}
 	if len(unloadResourceTask) > 0 {
@@ -162,7 +165,7 @@ func (hcp *HttpCenterProxy) loadResourcesOfTasks(tasks []*model.Task) {
 				if err != nil {
 					return
 				}
-				task.ResourceBytes = resBytes
+				task.ResourceBytes = string(resBytes)
 			})
 		}(t)
 	}

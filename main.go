@@ -5,6 +5,7 @@ import (
 	"dyzs/galaxy/logger"
 	"dyzs/galaxy/server"
 	"dyzs/galaxy/util"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/json-iterator/go/extra"
@@ -14,7 +15,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"time"
 )
 
 func init() {
@@ -28,6 +28,8 @@ func init() {
 }
 
 func main() {
+
+	//startWebsocket()
 
 	initSN()
 
@@ -88,24 +90,33 @@ type WsMessage struct {
 	Content     interface{} `json:"content"`
 	Timestamp   int64       `json:"timestamp"`
 }
-
-func link(c *websocket.Conn) {
-	c.SetCloseHandler(func(code int, text string) error {
+type WsReceiveMessage struct {
+	From        string          `json:"from"`
+	To          string          `json:"to"`
+	SendType    string          `json:"sendType"`
+	ContentType string          `json:"contentType"`
+	Content     json.RawMessage `json:"content"`
+	Timestamp   int64           `json:"timestamp"`
+}
+func link(ws *websocket.Conn) {
+	ws.SetCloseHandler(func(code int, text string) error {
 		fmt.Println("conn 关闭")
 		return nil
 	})
 	//接收数据
-	go func() {
-		for {
-			time.Sleep(5 * time.Second)
-			_ = c.WriteJSON(&WsMessage{
-				Content: map[string]interface{}{
-					"subscribe":   []string{"a1", "a2"},
-					"unSubscribe": []string{"b1", "b2"},
-				},
-			})
+	//读取数据
+READ_LOOP:
+	for {
+		wrap := &WsReceiveMessage{}
+		err := ws.ReadJSON(wrap)
+		if err != nil {
+			logger.LOG_WARN(err)
+			break READ_LOOP
 		}
-	}()
+		str,_ := json.Marshal(wrap)
+		fmt.Println(string(str))
+fmt.Println(len(str))
+	}
 }
 
 func startWebsocket() {

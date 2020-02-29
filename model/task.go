@@ -19,7 +19,7 @@ type Task struct {
 	PreviousTag string   `json:"previousTag"`
 	CurrentTag  string   `json:"currentTag"`
 	AccessType  string   `json:"accessType"`
-	ExportPorts []string `json:"exportPorts"`
+	ExportPorts string `json:"exportPorts"`
 	AllResource bool     `json:"allResource"`
 	ResourceId  string   `json:"resourceId"`
 	Status      int      `json:"status"`
@@ -28,7 +28,7 @@ type Task struct {
 	UpdateTime  int64    `json:"updateTime"`
 
 	NodeID        string `json:"nodeId"`
-	ResourceBytes []byte `json:"resourceBytes"`
+	ResourceBytes string `json:"resourceBytes"`
 	resourceCache []*Resource
 }
 
@@ -37,7 +37,7 @@ func (task *Task) GetResources() []*Resource {
 		return task.resourceCache
 	}
 	if len(task.ResourceBytes) > 0 {
-		csvReader := csv.NewReader(bytes.NewReader(task.ResourceBytes))
+		csvReader := csv.NewReader(bytes.NewReader([]byte(task.ResourceBytes)))
 		for {
 			row, err := csvReader.Read()
 			if err != nil && err != io.EOF {
