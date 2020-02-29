@@ -118,7 +118,7 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 		if len(t.ResourceId) > 0 && (!ok || t.ResourceId != oldT.ResourceId || len(oldT.ResourceBytes) == 0) {
 			unloadResourceTask = append(unloadResourceTask, t)
 		}
-		if t.ResourceId == oldT.ResourceId && len(oldT.ResourceBytes) > 0 {
+		if ok && t.ResourceId == oldT.ResourceId && len(oldT.ResourceBytes) > 0 {
 			t.ResourceBytes = oldT.ResourceBytes
 		}
 	}
