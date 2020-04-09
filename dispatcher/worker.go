@@ -18,14 +18,13 @@ import (
 	"time"
 )
 
-
 var managePortPool = make(map[int]bool)
 var managePortStart = 32000
 var managePortPoolLock sync.Mutex
 
-const(
-	_URL_INIT = "http://%s:%s/mapi/init"
-	_URL_HEART = "http://%s:%s/mapi/heart"
+const (
+	_URL_INIT            = "http://%s:%s/mapi/init"
+	_URL_HEART           = "http://%s:%s/mapi/heart"
 	_URL_ASSIGN_RESOURCE = "http://%s:%s/mapi/assignResource"
 	_URL_REVOKE_RESOURCE = "http://%s:%s/mapi/revokeResource"
 )
@@ -33,12 +32,12 @@ const(
 //任务执行器
 type Worker struct {
 	sync.Mutex
-	td          *TaskDispatcher
+	td *TaskDispatcher
 
-	TaskId string
+	TaskId      string
 	workingTask *model.Task
 	taskInited  bool
-	managePort int
+	managePort  int
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -65,7 +64,7 @@ func (w *Worker) bindTask() {
 		}
 		//任务取消，停止进程
 		newTask := w.td.GetTaskById(w.TaskId)
-		if newTask==nil {
+		if newTask == nil {
 			w.td.ReleaseTask(w.TaskId)
 			w.stopTask()
 			w.cancel()
@@ -82,7 +81,7 @@ func (w *Worker) bindTask() {
 		w.Lock()
 		wt = w.workingTask
 		w.Unlock()
-		if wt==nil{
+		if wt == nil {
 			//创建失败，重新创建
 			continue
 		}
@@ -104,16 +103,16 @@ func (w *Worker) bindTask() {
 			}
 		}
 		//任务无变更
-		if  wt.UpdateTime == newTask.UpdateTime && wt.ResourceId==newTask.ResourceId {
+		if wt.UpdateTime == newTask.UpdateTime && wt.ResourceId == newTask.ResourceId {
 			continue
 		}
 		//任务组件变更/端口变更
-		if  wt.Repository!=newTask.Repository||wt.CurrentTag!=newTask.CurrentTag ||!ComparePorts(wt.ExportPorts,newTask.ExportPorts){
+		if wt.Repository != newTask.Repository || wt.CurrentTag != newTask.CurrentTag || !ComparePorts(wt.ExportPorts, newTask.ExportPorts) {
 			w.startTask(newTask)
 		}
 		var err error
 		//任务配置变更
-		if  wt.UpdateTime != newTask.UpdateTime {
+		if wt.UpdateTime != newTask.UpdateTime {
 			err = w.initTask(newTask)
 			if err != nil {
 				logger.LOG_WARN("更新任务配置异常：", err)
@@ -121,8 +120,8 @@ func (w *Worker) bindTask() {
 			}
 		}
 		//任务资源变更
-		if  wt.ResourceId != newTask.ResourceId {
-			err = w.refreshResource(wt,newTask)
+		if wt.ResourceId != newTask.ResourceId {
+			err = w.refreshResource(wt, newTask)
 			if err != nil {
 				logger.LOG_WARN("更新任务资源异常：", err)
 				continue
@@ -169,12 +168,12 @@ func ComparePorts(a, b string) bool {
 }
 
 //初始化任务
-func (w *Worker) initTask(task *model.Task) error{
+func (w *Worker) initTask(task *model.Task) error {
 	return request(fmt.Sprintf(_URL_INIT, TASK_CONTAINER_PREFIX+task.ID, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", task, nil)
 }
 
 //刷新资源
-func (w *Worker) refreshResource(oldTask,newTask *model.Task) error{
+func (w *Worker) refreshResource(oldTask, newTask *model.Task) error {
 	oldResources := oldTask.GetResources()
 	newResources := newTask.GetResources()
 	oldResourceMap := make(map[string]*model.Resource)
@@ -182,7 +181,7 @@ func (w *Worker) refreshResource(oldTask,newTask *model.Task) error{
 	var removeR []string
 	var updateR = make([]*model.Resource, 0)
 	var addR = make([]*model.Resource, 0)
-	for _,r := range newResources{
+	for _, r := range newResources {
 		newResourceMap[r.ID] = r
 	}
 	//删除
@@ -192,7 +191,7 @@ func (w *Worker) refreshResource(oldTask,newTask *model.Task) error{
 		//删除
 		if !ok {
 			removeR = append(removeR, r.ID)
-		} else if !compareResource(r,nr) {
+		} else if !compareResource(r, nr) {
 			//更新
 			updateR = append(updateR, nr)
 		}
@@ -200,7 +199,7 @@ func (w *Worker) refreshResource(oldTask,newTask *model.Task) error{
 	//新增
 	for _, r := range newResources {
 		_, ok := oldResourceMap[r.ID]
-		if !ok{
+		if !ok {
 			addR = append(addR, r)
 		}
 	}
@@ -214,7 +213,7 @@ func (w *Worker) refreshResource(oldTask,newTask *model.Task) error{
 		logger.LOG_WARN("revoke resource success")
 	}
 	//request add
-	addR = append(addR,updateR...)
+	addR = append(addR, updateR...)
 	if len(addR) > 0 {
 		logger.LOG_WARN("assign resource，task【", w.TaskId, "】,count：", len(addR))
 		err := request(fmt.Sprintf(_URL_ASSIGN_RESOURCE, TASK_CONTAINER_PREFIX+w.TaskId, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", addR, nil)
@@ -227,8 +226,8 @@ func (w *Worker) refreshResource(oldTask,newTask *model.Task) error{
 }
 
 //比对资源
-func compareResource(a,b *model.Resource)bool{
-	return a.GbID == b.GbID&&a.DominionCode == b.DominionCode&&a.MvcIP ==b.MvcIP&&a.MvcPort==b.MvcPort&&a.MvcUsername==b.MvcUsername&&a.MvcPassword==b.MvcPassword&&a.MvcChannels==b.MvcChannels
+func compareResource(a, b *model.Resource) bool {
+	return a.GbID == b.GbID && a.DominionCode == b.DominionCode && a.MvcIP == b.MvcIP && a.MvcPort == b.MvcPort && a.MvcUsername == b.MvcUsername && a.MvcPassword == b.MvcPassword && a.MvcChannels == b.MvcChannels
 }
 
 //任务保活
@@ -249,7 +248,7 @@ func (w *Worker) keepaliveTask() {
 			continue
 		}
 		//keep alive
-		err :=  request(fmt.Sprintf(_URL_HEART, TASK_CONTAINER_PREFIX+wt.ID, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", map[string]interface{}{}, nil)
+		err := request(fmt.Sprintf(_URL_HEART, TASK_CONTAINER_PREFIX+wt.ID, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", map[string]interface{}{}, nil)
 		if err != nil {
 			logger.LOG_INFO("任务keep-alive异常，", err)
 			logger.LOG_INFO("关闭任务:", w.TaskId)
@@ -340,7 +339,6 @@ func (w *Worker) stopTask() {
 	w.Unlock()
 }
 
-
 func getNewManagePort() (port int) {
 	managePortPoolLock.Lock()
 	managePortPoolLock.Unlock()
@@ -368,6 +366,7 @@ var workerHttpClient = &http.Client{
 	},
 	Timeout: 3 * time.Second,
 }
+
 //http请求
 func request(url, method, contentType string, body interface{}, resPointer interface{}) error {
 	var bodyBytes []byte
@@ -418,6 +417,7 @@ func request(url, method, contentType string, body interface{}, resPointer inter
 	}
 	return nil
 }
+
 type ResponseWrap struct {
 	Code int                 `json:"code"`
 	Msg  jsoniter.RawMessage `json:"msg"`
