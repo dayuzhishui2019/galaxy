@@ -142,6 +142,27 @@ func (td *TaskDispatcher) refreshTasks(tasks []*model.Task) {
 	}
 }
 
+func (td *TaskDispatcher) GetTaskById(taskId string)*model.Task{
+	td.Lock()
+	defer func(){
+		td.Unlock()
+	}()
+	task, ok := td.taskMap[taskId]
+	if !ok{
+		return nil
+	}
+	return task
+}
+
+func (td *TaskDispatcher) ReleaseTask(taskId string){
+	td.Lock()
+	defer func(){
+		td.Unlock()
+	}()
+	delete(td.taskBinding, taskId)
+}
+
+
 //绑定任务到执行器
 func (td *TaskDispatcher) loopBindTask() {
 	for {
@@ -158,17 +179,13 @@ func (td *TaskDispatcher) loopBindTask() {
 					//add task
 					logger.LOG_INFO("新增任务：", t.Name)
 					newTasks = append(newTasks, t)
-				} else if td.taskBinding[t.ID].task.UpdateTime != t.UpdateTime {
-					//update task
-					logger.LOG_INFO("更新任务：", t.Name)
-					td.taskBinding[t.ID].task = t
 				}
 			}
 			//bind task to worker
 			for _, nt := range newTasks {
 				worker := &Worker{
 					td:   td,
-					task: nt,
+					TaskId: nt.ID,
 				}
 				worker.start()
 				td.taskBinding[nt.ID] = worker
