@@ -334,6 +334,7 @@ func (w *Worker) stopTask() {
 	} else {
 		logger.LOG_WARN("关闭容器成功：", cmdRes)
 	}
+	_, _ = util.ExecCmd(fmt.Sprintf("docker rm %s", TASK_CONTAINER_PREFIX+w.TaskId))
 	w.Lock()
 	w.workingTask = nil
 	w.Unlock()
