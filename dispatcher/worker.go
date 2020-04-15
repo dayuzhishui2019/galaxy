@@ -306,7 +306,7 @@ func (w *Worker) startTask(task *model.Task) {
 	//name
 	cmd.WriteString(" --name=" + taskDir)
 	//env
-	cmd.WriteString(" -e MANAGE_PORT=7777 ")
+	cmd.WriteString(" -e MANAGE_PORT=" + strconv.Itoa(w.managePort) + " ")
 	cmd.WriteString(" -e HOST=" + viper.GetString("host") + " ")
 	cmd.WriteString(" -e LOG_LEVEL=" + viper.GetString("log.level") + " ")
 	//volume
