@@ -15,9 +15,9 @@ type Resource struct {
 	Func         string `json:"func" csv:"6"`
 	MvcIP        string `json:"mvcIP" csv:"7"`
 	MvcPort      string `json:"mvcPort" csv:"8"`
-	MvcUsername  string `json:"mvc.username" csv:"9"`
-	MvcPassword  string `json:"mvc.password" csv:"10"`
-	MvcChannels  string `json:"mvc.channels" csv:"11"`
+	MvcUsername  string `json:"mvcUsername" csv:"9"`
+	MvcPassword  string `json:"mvcPassword" csv:"10"`
+	MvcChannels  string `json:"mvcChannels" csv:"11"`
 
 	Name string `json:"name"`
 }

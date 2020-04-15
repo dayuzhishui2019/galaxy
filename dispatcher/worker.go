@@ -112,7 +112,7 @@ func (w *Worker) bindTask() {
 		}
 		var err error
 		//任务配置变更
-		if wt.UpdateTime != newTask.UpdateTime {
+		if wt.UpdateTime != newTask.UpdateTime && !compareTask(wt, newTask) {
 			err = w.initTask(newTask)
 			if err != nil {
 				logger.LOG_WARN("更新任务配置异常：", err)
@@ -223,6 +223,11 @@ func (w *Worker) refreshResource(oldTask, newTask *model.Task) error {
 		logger.LOG_WARN("assign resource success")
 	}
 	return nil
+}
+
+//比对任务
+func compareTask(a, b *model.Task) bool {
+	return a.AccessType == b.AccessType && a.AccessParam == b.AccessParam
 }
 
 //比对资源
