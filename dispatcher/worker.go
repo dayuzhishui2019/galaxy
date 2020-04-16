@@ -169,31 +169,59 @@ func ComparePorts(a, b string) bool {
 
 //初始化任务
 func (w *Worker) initTask(task *model.Task) error {
-	return request(fmt.Sprintf(_URL_INIT, TASK_CONTAINER_PREFIX+task.ID, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", task, nil)
+	copyTask := &model.Task{
+		ID:            task.ID,
+		Name:          task.Name,
+		Repository:    task.Repository,
+		PreviousTag:   task.PreviousTag,
+		CurrentTag:    task.CurrentTag,
+		AccessType:    task.AccessType,
+		ExportPorts:   task.ExportPorts,
+		AllResource:   task.AllResource,
+		ResourceId:    task.ResourceId,
+		Status:        task.Status,
+		AccessParam:   task.AccessParam,
+		CreateTime:    task.CreateTime,
+		UpdateTime:    task.UpdateTime,
+		NodeID:        task.NodeID,
+		ResourceBytes: "",
+	}
+	err := request(fmt.Sprintf(_URL_INIT, TASK_CONTAINER_PREFIX+task.ID, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", copyTask, nil)
+	if err != nil {
+		return err
+	}
+	return w.refreshResource(nil, task)
 }
 
 //刷新资源
 func (w *Worker) refreshResource(oldTask, newTask *model.Task) error {
-	oldResources := oldTask.GetResources()
+	var oldResources []*model.Resource
+	if oldTask != nil {
+		oldResources = oldTask.GetResources()
+	} else {
+		oldResources = make([]*model.Resource, 0)
+	}
 	newResources := newTask.GetResources()
 	oldResourceMap := make(map[string]*model.Resource)
-	newResourceMap := make(map[string]*model.Resource)
 	var removeR []string
 	var updateR = make([]*model.Resource, 0)
 	var addR = make([]*model.Resource, 0)
-	for _, r := range newResources {
-		newResourceMap[r.ID] = r
-	}
 	//删除
-	for _, r := range oldResources {
-		oldResourceMap[r.ID] = r
-		nr, ok := newResourceMap[r.ID]
-		//删除
-		if !ok {
-			removeR = append(removeR, r.ID)
-		} else if !compareResource(r, nr) {
-			//更新
-			updateR = append(updateR, nr)
+	if len(oldResources) > 0 {
+		newResourceMap := make(map[string]*model.Resource)
+		for _, r := range newResources {
+			newResourceMap[r.ID] = r
+		}
+		for _, r := range oldResources {
+			oldResourceMap[r.ID] = r
+			nr, ok := newResourceMap[r.ID]
+			//删除
+			if !ok {
+				removeR = append(removeR, r.ID)
+			} else if !compareResource(r, nr) {
+				//更新
+				updateR = append(updateR, nr)
+			}
 		}
 	}
 	//新增
