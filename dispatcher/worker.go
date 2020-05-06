@@ -342,6 +342,8 @@ func (w *Worker) startTask(task *model.Task) {
 	cmd.WriteString(" -e MANAGE_PORT=" + strconv.Itoa(w.managePort) + " ")
 	cmd.WriteString(" -e HOST=" + viper.GetString("host") + " ")
 	cmd.WriteString(" -e LOG_LEVEL=" + viper.GetString("log.level") + " ")
+	cmd.WriteString(" -e CENTER_IP=" + viper.GetString("center.host") + " ")
+	cmd.WriteString(" -e CENTER_PORT=" + viper.GetString("center.managePort") + " ")
 	//volume
 	cmd.WriteString(" -v /home/dyzs/logs/" + taskDir + ":/logs ")
 	//image
