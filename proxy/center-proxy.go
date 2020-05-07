@@ -9,7 +9,6 @@ import (
 	"dyzs/galaxy/redis"
 	"encoding/json"
 	"errors"
-	"fmt"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/viper"
 	"io"
@@ -78,7 +77,9 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 			lastUpdateTime = v.UpdateTime
 		}
 	}
-	res, err := hcp.client.Post("http://"+hcp.address+urlHeart+"?time="+strconv.FormatInt(lastUpdateTime, 10), "application/json", hcp.generateHeartRequest())
+	url := "http://"+hcp.address+urlHeart+"?time="+strconv.FormatInt(lastUpdateTime, 10)
+	logger.LOG_INFO("heart-request:",url)
+	res, err := hcp.client.Post(url, "application/json", hcp.generateHeartRequest())
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +113,7 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 		t.NodeID = hr.Node.Id
 
 		rrr, _ := jsoniter.Marshal(t)
-		fmt.Println(string(rrr))
+		logger.LOG_INFO("task:",string(rrr))
 
 		oldT, ok := localTaskMap[t.ID]
 		if len(t.ResourceId) > 0 && (!ok || t.ResourceId != oldT.ResourceId || len(oldT.ResourceBytes) == 0) {

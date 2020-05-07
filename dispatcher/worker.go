@@ -330,7 +330,7 @@ func (w *Worker) startTask(task *model.Task) {
 		for _, p := range eps {
 			_, err := strconv.Atoi(strings.Trim(p, " "))
 			if err == nil {
-				cmd.WriteString(" -p " + p + ":" + p + " ")
+				cmd.WriteString(" -p " + p + ":" + p + " -p " + p + ":" + p + "/udp ")
 			}
 		}
 	}
@@ -411,6 +411,14 @@ func request(url, method, contentType string, body interface{}, resPointer inter
 		bodyBytes, _ = jsoniter.Marshal(body)
 	}
 	logger.LOG_INFO("http-request:", url)
+	if logger.IsDebug(){
+		params,err := jsoniter.Marshal(body)
+		if err!=nil{
+			logger.LOG_WARN("http-request-params-error:",err)
+		}else{
+			logger.LOG_INFO("http-request-params:",string(params))
+		}
+	}
 	err := util.Retry(func() error {
 		req, err := http.NewRequest(method, url, bytes.NewReader(bodyBytes))
 		if err != nil {
