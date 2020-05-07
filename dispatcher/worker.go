@@ -75,7 +75,8 @@ func (w *Worker) bindTask() {
 		w.Lock()
 		wt = w.workingTask
 		w.Unlock()
-		if wt == nil {
+		//任务组件变更/端口变更
+		if wt == nil || wt.Repository != newTask.Repository || wt.CurrentTag != newTask.CurrentTag || !ComparePorts(wt.ExportPorts, newTask.ExportPorts) {
 			w.startTask(newTask)
 		}
 		w.Lock()
@@ -94,7 +95,7 @@ func (w *Worker) bindTask() {
 			err := w.initTask(wt)
 			if err != nil {
 				//初始化失败，重新初始化
-				logger.LOG_INFO("任务init异常，", err)
+				logger.LOG_WARN("任务init异常，", err)
 				continue
 			} else {
 				w.Lock()
@@ -105,10 +106,6 @@ func (w *Worker) bindTask() {
 		//任务无变更
 		if wt.UpdateTime == newTask.UpdateTime && wt.ResourceId == newTask.ResourceId {
 			continue
-		}
-		//任务组件变更/端口变更
-		if wt.Repository != newTask.Repository || wt.CurrentTag != newTask.CurrentTag || !ComparePorts(wt.ExportPorts, newTask.ExportPorts) {
-			w.startTask(newTask)
 		}
 		var err error
 		//任务配置变更
@@ -137,16 +134,21 @@ func (w *Worker) bindTask() {
 }
 
 func ComparePorts(a, b string) bool {
+	a = strings.Trim(a, " ")
+	b = strings.Trim(b, " ")
+	if a == b {
+		return true
+	}
 	aeps := make([]string, 0)
 	beps := make([]string, 0)
 	err := jsoniter.Unmarshal([]byte(a), &aeps)
 	if err != nil {
-		logger.LOG_WARN("端口映射解析异常：", err)
+		logger.LOG_WARN("端口映射解析异常：", a, ",ERR:", err)
 		return true
 	}
-	err = jsoniter.Unmarshal([]byte(a), &beps)
+	err = jsoniter.Unmarshal([]byte(b), &beps)
 	if err != nil {
-		logger.LOG_WARN("端口映射解析异常：", err)
+		logger.LOG_WARN("端口映射解析异常：", b, ",ERR:", err)
 		return true
 	}
 	if len(aeps) != len(beps) {
@@ -283,8 +285,8 @@ func (w *Worker) keepaliveTask() {
 		//keep alive
 		err := request(fmt.Sprintf(_URL_HEART, TASK_CONTAINER_PREFIX+wt.ID, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", map[string]interface{}{}, nil)
 		if err != nil {
-			logger.LOG_INFO("任务keep-alive异常，", err)
-			logger.LOG_INFO("关闭任务:", w.TaskId)
+			logger.LOG_WARN("任务keep-alive异常，", err)
+			logger.LOG_WARN("关闭任务:", w.TaskId)
 			w.stopTask()
 		}
 	}
@@ -324,7 +326,7 @@ func (w *Worker) startTask(task *model.Task) {
 		eps := make([]string, 0)
 		err := jsoniter.Unmarshal([]byte(task.ExportPorts), &eps)
 		if err != nil {
-			logger.LOG_WARN("端口映射解析异常：", err)
+			logger.LOG_WARN("端口映射解析异常：", task.ID, task.ExportPorts, ",ERR:", err)
 			return
 		}
 		for _, p := range eps {
@@ -411,12 +413,12 @@ func request(url, method, contentType string, body interface{}, resPointer inter
 		bodyBytes, _ = jsoniter.Marshal(body)
 	}
 	logger.LOG_INFO("http-request:", url)
-	if logger.IsDebug(){
-		params,err := jsoniter.Marshal(body)
-		if err!=nil{
-			logger.LOG_WARN("http-request-params-error:",err)
-		}else{
-			logger.LOG_INFO("http-request-params:",string(params))
+	if logger.IsDebug() {
+		params, err := jsoniter.Marshal(body)
+		if err != nil {
+			logger.LOG_WARN("http-request-params-error:", err)
+		} else {
+			logger.LOG_INFO("http-request-params:", string(params))
 		}
 	}
 	err := util.Retry(func() error {
