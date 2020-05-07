@@ -76,7 +76,7 @@ func Init() {
 }
 
 func genLogFileName(date time.Time) string {
-	return path.Join(GetAppPath(), "logs", "data-hub."+date.Format("20060102")+".log")
+	return path.Join(GetAppPath(), "logs", "galaxy."+date.Format("20060102")+".log")
 }
 
 func GetAppPath() string {
