@@ -133,6 +133,7 @@ func (hcp *HttpCenterProxy) generateHeartRequest() io.Reader {
 	m := make(map[string]string)
 	m["serialNumber"] = viper.GetString("sn")
 	m["model"] = viper.GetString("model")
+	m["name"] = viper.GetString("name")
 	b, err := json.Marshal(m)
 	if err != nil {
 		logger.LOG_WARN(err)
