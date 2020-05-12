@@ -92,7 +92,7 @@ func (w *Worker) bindTask() {
 		taskInited = w.taskInited
 		w.Unlock()
 		if !taskInited {
-			err := w.initTask(wt)
+			err := w.initTask(newTask)
 			if err != nil {
 				//初始化失败，重新初始化
 				logger.LOG_WARN("任务init异常，", err)
