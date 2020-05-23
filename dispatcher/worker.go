@@ -282,6 +282,9 @@ func (w *Worker) keepaliveTask() {
 		if wt == nil {
 			continue
 		}
+		if !w.taskInited {
+			continue
+		}
 		//keep alive
 		err := request(fmt.Sprintf(_URL_HEART, TASK_CONTAINER_PREFIX+wt.ID, strconv.Itoa(w.managePort)), http.MethodPost, "application/json", map[string]interface{}{}, nil)
 		if err != nil {

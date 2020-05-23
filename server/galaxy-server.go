@@ -10,10 +10,10 @@ import (
 func InitCofnigHttpServer() {
 
 	engin := gin.Default()
-	engin.LoadHTMLGlob("templates/*")
+	//engin.LoadHTMLGlob("templates/*")
 
 	//初始化配置
-	RouteBoxInit(engin)
+	//RouteBoxInit(engin)
 	engin.Handle(http.MethodGet, "/debug", func(ctx *gin.Context) {
 		level := ctx.Query("level")
 		if level != "" {
