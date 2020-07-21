@@ -22,6 +22,9 @@ var managePortPool = make(map[int]bool)
 var managePortStart = 32000
 var managePortPoolLock sync.Mutex
 
+var taskResources = make(map[string]map[string]bool)
+var taskManagePort = make(map[string]int)
+
 const (
 	_URL_INIT            = "http://%s:%s/mapi/init"
 	_URL_HEART           = "http://%s:%s/mapi/heart"
@@ -43,10 +46,27 @@ type Worker struct {
 	cancel context.CancelFunc
 }
 
+func GetTaskAddressByResourceId(resourceId string) (taskAddress string) {
+	var taskIds []string
+	for taskId, resourceIds := range taskResources {
+		if _, ok := resourceIds[resourceId]; ok {
+			taskIds = append(taskIds, taskId)
+		}
+	}
+	if len(taskIds) == 0 {
+		return ""
+	}
+	if len(taskIds) > 1 {
+		logger.LOG_WARN("资源下发到了多个任务，资源ID：", resourceId, ";任务Ids：", taskIds)
+	}
+	return TASK_CONTAINER_PREFIX+taskIds[0] + strconv.Itoa(taskManagePort[taskIds[0]])
+}
+
 //执行器启动
 func (w *Worker) start() {
 	w.ctx, w.cancel = context.WithCancel(w.td.ctx)
 	w.managePort = getNewManagePort()
+	taskManagePort[w.TaskId] = w.managePort
 	go w.bindTask()
 	go w.keepaliveTask()
 }
@@ -198,6 +218,7 @@ func (w *Worker) initTask(task *model.Task) error {
 //刷新资源
 func (w *Worker) refreshResource(oldTask, newTask *model.Task) error {
 	var oldResources []*model.Resource
+	var newResourceIds = make(map[string]bool)
 	if oldTask != nil {
 		oldResources = oldTask.GetResources()
 	} else {
@@ -228,6 +249,8 @@ func (w *Worker) refreshResource(oldTask, newTask *model.Task) error {
 	}
 	//新增
 	for _, r := range newResources {
+		newResourceIds[r.ID] = true
+		newResourceIds[r.GbID] = true
 		_, ok := oldResourceMap[r.ID]
 		if !ok {
 			addR = append(addR, r)
@@ -252,6 +275,9 @@ func (w *Worker) refreshResource(oldTask, newTask *model.Task) error {
 		}
 		logger.LOG_WARN("assign resource success")
 	}
+
+	//缓存任务资源关系
+	taskResources[newTask.ID] = newResourceIds
 	return nil
 }
 
