@@ -14,3 +14,4 @@ log:
   level: debug
 redis:
   addr: 192.168.100.100:16379
+mediaAddress: "mediatransfer:7555"
