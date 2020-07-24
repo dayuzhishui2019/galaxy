@@ -31,12 +31,12 @@ func (chs *ConfigHttpServer) galaxyHandle(c *gin.Context) {
 	}
 
 	switch cmd.Cmd {
-	case "submitchannel":
-		chs.submitChannel(cmd.Param)
-	case "getallchannel":
-		chs.getAllChannels(cmd.Param)
-	case "getresourceidbychannel":
-		chs.getResourceByChannel(cmd.Param)
+	case "ResponseCatalog":
+		chs.submitChannel(c, cmd.Param)
+	case "QueryChannelList":
+		chs.getAllChannels(c, cmd.Param)
+	case "QueryDeviceId":
+		chs.getResourceByChannel(c, cmd.Param)
 	default:
 		logger.LOG_WARN("未找到指令匹配的处理器：", cmd.Cmd)
 	}
@@ -46,14 +46,16 @@ func (chs *ConfigHttpServer) galaxyHandle(c *gin.Context) {
 提交设备通道
 */
 func (chs *ConfigHttpServer) submitChannel(c *gin.Context, param jsoniter.RawMessage) {
-	channels := make([]*Channel, 0)
-	err := jsoniter.Unmarshal(param, &channels)
+	catalogListParam := &CatalogListParam{}
+	err := jsoniter.Unmarshal(param, catalogListParam)
 	if err != nil {
 		logger.LOG_WARN("参数解析异常:", err)
 		return
 	}
-	for _, c := range channels {
-		chs.channelMap[c.ChannelNo] = c
+	if len(catalogListParam.CatalogList) > 0 {
+		for _, c := range catalogListParam.CatalogList {
+			chs.channelMap[c.DeviceID] = c
+		}
 	}
 	c.JSON(http.StatusOK, &GalaxyResponse{
 		Code:    http.StatusOK,
@@ -72,7 +74,9 @@ func (chs *ConfigHttpServer) getAllChannels(c *gin.Context, param jsoniter.RawMe
 	c.JSON(http.StatusOK, &GalaxyResponse{
 		Code:    http.StatusOK,
 		Message: "success",
-		Result:  channels,
+		Result: map[string]interface{}{
+			"ChannelList": channels,
+		},
 	})
 }
 
@@ -94,7 +98,9 @@ func (chs *ConfigHttpServer) getResourceByChannel(c *gin.Context, param jsoniter
 		c.JSON(http.StatusOK, &GalaxyResponse{
 			Code:    http.StatusOK,
 			Message: "success",
-			Result:  ch,
+			Result: map[string]string{
+				"DeviceId": ch.FromID,
+			},
 		})
 		return
 	}
