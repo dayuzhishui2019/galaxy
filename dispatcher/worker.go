@@ -47,6 +47,9 @@ type Worker struct {
 }
 
 func GetTaskAddressByResourceId(resourceId string) (taskAddress string) {
+
+	//taskResources["onviftask"] = map[string]bool{"34020000001320000001":true}
+
 	var taskIds []string
 	for taskId, resourceIds := range taskResources {
 		if _, ok := resourceIds[resourceId]; ok {
@@ -59,7 +62,7 @@ func GetTaskAddressByResourceId(resourceId string) (taskAddress string) {
 	if len(taskIds) > 1 {
 		logger.LOG_WARN("资源下发到了多个任务，资源ID：", resourceId, ";任务Ids：", taskIds)
 	}
-	return TASK_CONTAINER_PREFIX+taskIds[0] + strconv.Itoa(taskManagePort[taskIds[0]])
+	return TASK_CONTAINER_PREFIX + taskIds[0] + strconv.Itoa(taskManagePort[taskIds[0]])
 }
 
 //执行器启动

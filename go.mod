@@ -12,6 +12,7 @@ require (
 	github.com/gin-gonic/gin v1.5.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gomodule/redigo v2.0.0+incompatible
+	github.com/gorilla/websocket v1.4.0
 	github.com/json-iterator/go v1.1.8
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/satori/go.uuid v1.2.0

@@ -18,6 +18,8 @@ type ConfigHttpServer struct {
 	client *http.Client
 
 	channelMap map[string]*Channel
+
+	previewWs   *PreviewWebsocket
 }
 
 func (chs *ConfigHttpServer) Init() {
@@ -43,10 +45,16 @@ func (chs *ConfigHttpServer) Init() {
 		Addr:    ":" + viper.GetString("port"),
 	}
 
+	chs.initWs()
+
 	err := chs.server.ListenAndServe()
 	if err != nil {
 		panic(err)
 	}
+
+	//启动websocket
+
+	//启动websocket
 }
 
 func (chs *ConfigHttpServer) debug(ctx *gin.Context){

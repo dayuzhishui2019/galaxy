@@ -3,17 +3,17 @@ package server
 import (
 	"dyzs/galaxy/dispatcher"
 	"dyzs/galaxy/logger"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
-func (chs *ConfigHttpServer) proxy(ctx *gin.Context){
+func (chs *ConfigHttpServer) proxy(ctx *gin.Context) {
 	target := ctx.GetHeader("Target")
-	address := chs.getAddress(target)
+	address := getAddress(target)
 	if address == "" {
 		logger.LOG_WARN("未找到目标进程，Target:", ctx.GetHeader("Target"))
 		ctx.String(http.StatusServiceUnavailable, "")
@@ -22,7 +22,7 @@ func (chs *ConfigHttpServer) proxy(ctx *gin.Context){
 	chs.forward("http://"+address+"/cmd", ctx)
 }
 
-func (chs *ConfigHttpServer) getAddress(target string) string {
+func getAddress(target string) string {
 	if target == "" {
 		return ""
 	}
@@ -33,9 +33,13 @@ func (chs *ConfigHttpServer) getAddress(target string) string {
 }
 
 func (chs *ConfigHttpServer) forward(url string, ctx *gin.Context) {
+	start := time.Now()
+	defer func() {
+		logger.LOG_INFO("galaxy-forward耗时：", time.Since(start), ",url:", url)
+	}()
 	req, err := http.NewRequest(ctx.Request.Method, url, ctx.Request.Body)
 	if err != nil {
-		fmt.Print("http.NewRequest ", url, ", error:", err.Error())
+		logger.LOG_WARN("http.NewRequest ", url, ", error:", err.Error())
 		return
 	}
 	for k, v := range ctx.Request.Header {
@@ -43,7 +47,7 @@ func (chs *ConfigHttpServer) forward(url string, ctx *gin.Context) {
 	}
 	res, err := chs.client.Do(req)
 	if err != nil {
-		fmt.Print("cli.Do(req) ", url, ", error:", err.Error())
+		logger.LOG_WARN("cli.Do(req) ", url, ", error:", err.Error())
 		return
 	}
 	defer res.Body.Close()
@@ -52,7 +56,7 @@ func (chs *ConfigHttpServer) forward(url string, ctx *gin.Context) {
 	}
 	_, err = io.Copy(ctx.Writer, res.Body)
 	if err != nil {
-		fmt.Print("request forward response ", url, ", error:", err.Error())
+		logger.LOG_WARN("request forward response ", url, ", error:", err.Error())
 		return
 	}
 }
