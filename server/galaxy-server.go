@@ -19,7 +19,9 @@ type ConfigHttpServer struct {
 
 	channelMap map[string]*Channel
 
-	previewWs   *PreviewWebsocket
+	previewWs *PreviewWebsocket
+
+	syncSessionMap map[string]string
 }
 
 func (chs *ConfigHttpServer) Init() {
@@ -33,6 +35,7 @@ func (chs *ConfigHttpServer) Init() {
 		Timeout: 30 * time.Second,
 	}
 	chs.channelMap = make(map[string]*Channel)
+	chs.syncSessionMap = make(map[string]string)
 
 	engin := gin.Default()
 	//变更日志级别
@@ -57,7 +60,7 @@ func (chs *ConfigHttpServer) Init() {
 	//启动websocket
 }
 
-func (chs *ConfigHttpServer) debug(ctx *gin.Context){
+func (chs *ConfigHttpServer) debug(ctx *gin.Context) {
 	level := ctx.Query("level")
 	if level != "" {
 		logger.ChangeLevel(level)
@@ -68,7 +71,7 @@ func (chs *ConfigHttpServer) cmd(ctx *gin.Context) {
 	target := ctx.GetHeader("Target")
 	if target == "galaxy" {
 		chs.galaxyHandle(ctx)
-	}else{
+	} else {
 		chs.proxy(ctx)
 	}
 }

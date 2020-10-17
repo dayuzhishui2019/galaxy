@@ -5,6 +5,7 @@ import (
 	"dyzs/galaxy/logger"
 	"dyzs/galaxy/util"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
 	"github.com/spf13/viper"
@@ -15,7 +16,6 @@ import (
 )
 
 const _URL_CENTER_SUBMIT_CHANNEL = "http://{CENTER_IP}:{CENTER_PORT}/management/sensor/submitChannels"
-
 
 func (chs *ConfigHttpServer) galaxyHandle(c *gin.Context) {
 	buff := bytes.NewBuffer(make([]byte, 0, c.Request.ContentLength))
@@ -56,6 +56,7 @@ func (chs *ConfigHttpServer) galaxyHandle(c *gin.Context) {
 */
 func (chs *ConfigHttpServer) submitChannel(c *gin.Context, param jsoniter.RawMessage) {
 	catalogListParam := &CatalogListParam{}
+	fmt.Println(string(param))
 	err := jsoniter.Unmarshal(param, catalogListParam)
 	if err != nil {
 		logger.LOG_WARN("参数解析异常:", err)
@@ -65,7 +66,7 @@ func (chs *ConfigHttpServer) submitChannel(c *gin.Context, param jsoniter.RawMes
 		channelsReq := make(map[string][]map[string]interface{})
 		for _, c := range catalogListParam.CatalogList {
 			chs.channelMap[c.DeviceID] = c
-			if channelsReq[c.FromID] ==nil{
+			if channelsReq[c.FromID] == nil {
 				channelsReq[c.FromID] = make([]map[string]interface{}, 0)
 			}
 			channelsReq[c.FromID] = append(channelsReq[c.FromID], map[string]interface{}{
@@ -99,7 +100,7 @@ func (chs *ConfigHttpServer) submitChannel(c *gin.Context, param jsoniter.RawMes
 查询所有设备通道
 */
 func (chs *ConfigHttpServer) getAllChannels(c *gin.Context, param jsoniter.RawMessage) {
-	channels := make([]*Channel, len(chs.channelMap))
+	channels := make([]*Channel, 0)
 	for _, c := range chs.channelMap {
 		channels = append(channels, c)
 	}
@@ -122,8 +123,8 @@ func (chs *ConfigHttpServer) getResourceByChannel(c *gin.Context, param jsoniter
 		logger.LOG_WARN("参数解析异常:", err)
 		goto ERR
 	}
-	if p["channelNo"] == "" {
-		logger.LOG_WARN("参数解析异常,channelNo为空")
+	if p["Channel"] == "" {
+		logger.LOG_WARN("参数解析异常,Channel为空")
 		goto ERR
 	}
 	if ch, ok := chs.channelMap[p["Channel"]]; ok {

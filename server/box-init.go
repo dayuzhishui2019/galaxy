@@ -7,7 +7,7 @@ import (
 )
 
 func RouteBoxInit(engine *gin.Engine) {
-	engine.GET("/init",Init)
+	engine.GET("/init", Init)
 }
 
 func Init(context *gin.Context) {

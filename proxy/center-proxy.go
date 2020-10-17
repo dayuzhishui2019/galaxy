@@ -77,8 +77,8 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 			lastUpdateTime = v.UpdateTime
 		}
 	}
-	url := "http://"+hcp.address+urlHeart+"?time="+strconv.FormatInt(lastUpdateTime, 10)
-	logger.LOG_INFO("heart-request:",url)
+	url := "http://" + hcp.address + urlHeart + "?time=" + strconv.FormatInt(lastUpdateTime, 10)
+	logger.LOG_INFO("heart-request:", url)
 	res, err := hcp.client.Post(url, "application/json", hcp.generateHeartRequest())
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func (hcp *HttpCenterProxy) Heart(localTasks []*model.Task) (hr *HeartResonse, e
 		t.NodeID = hr.Node.Id
 
 		rrr, _ := jsoniter.Marshal(t)
-		logger.LOG_INFO("task:",string(rrr))
+		logger.LOG_INFO("task:", string(rrr))
 
 		oldT, ok := localTaskMap[t.ID]
 		if len(t.ResourceId) > 0 && (!ok || t.ResourceId != oldT.ResourceId || len(oldT.ResourceBytes) == 0) {

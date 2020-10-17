@@ -8,9 +8,9 @@ type GalaxyCmd struct {
 }
 
 type GalaxyResponse struct {
-	Code    int         `json:"code"`
-	Message string      `json:"message"`
-	Result  interface{} `json:"result"`
+	Code    int         `json:"Code"`
+	Message string      `json:"Message"`
+	Result  interface{} `json:"Result"`
 }
 
 type Channel struct {
@@ -25,15 +25,15 @@ type Channel struct {
 	Parental     int    `json:"Parental"`
 	ParentID     string `json:"ParentId"`
 	SafetyWay    int    `json:"SafetyWay"`
-	RegisterWay  string `json:"RegisterWay"`
+	RegisterWay  int    `json:"RegisterWay"`
 	Secrecy      int    `json:"Secrecy"`
 
 	Status    string  `json:"Status"`
 	Longitude float64 `json:"Longitude"`
 	Latitude  float64 `json:"Latitude"`
-	PTZType   int     `json:"PtzType"`
+	PTZType   int     `json:"PTZType"`
 }
 
-type CatalogListParam struct{
+type CatalogListParam struct {
 	CatalogList []*Channel `json:"CatalogList"`
 }

@@ -2,10 +2,10 @@ package util
 
 import (
 	"bytes"
+	"dyzs/galaxy/logger"
 	"fmt"
 	"os/exec"
 	"strings"
-	"dyzs/galaxy/logger"
 )
 
 func ExecCmd(cmdStr string) (string, error) {

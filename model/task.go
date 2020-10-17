@@ -13,19 +13,19 @@ const TASK_STATUS_STOP = 2
 const TASK_STATUS_DELETED = 99
 
 type Task struct {
-	ID          string   `json:"id"`
-	Name        string   `json:"name"`
-	Repository  string   `json:"repository"`
-	PreviousTag string   `json:"previousTag"`
-	CurrentTag  string   `json:"currentTag"`
-	AccessType  string   `json:"accessType"`
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Repository  string `json:"repository"`
+	PreviousTag string `json:"previousTag"`
+	CurrentTag  string `json:"currentTag"`
+	AccessType  string `json:"accessType"`
 	ExportPorts string `json:"exportPorts"`
-	AllResource bool     `json:"allResource"`
-	ResourceId  string   `json:"resourceId"`
-	Status      int      `json:"status"`
-	AccessParam      string   `json:"accessParam"`
-	CreateTime  int64    `json:"createTime"`
-	UpdateTime  int64    `json:"updateTime"`
+	AllResource bool   `json:"allResource"`
+	ResourceId  string `json:"resourceId"`
+	Status      int    `json:"status"`
+	AccessParam string `json:"accessParam"`
+	CreateTime  int64  `json:"createTime"`
+	UpdateTime  int64  `json:"updateTime"`
 
 	NodeID        string `json:"nodeId"`
 	ResourceBytes string `json:"resourceBytes"`

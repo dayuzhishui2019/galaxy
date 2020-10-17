@@ -3,9 +3,11 @@ package server
 import (
 	"bytes"
 	"context"
+	"dyzs/galaxy/constants"
 	"dyzs/galaxy/logger"
 	"dyzs/galaxy/redis"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	jsoniter "github.com/json-iterator/go"
@@ -66,6 +68,7 @@ func (e *ConfigHttpServer) initWs() {
 		msgC: make(chan *WsReceiveMessage, 10),
 		e:    e,
 	}
+
 	go e.previewWs.loopHandle()
 	e.previewWs.Run()
 
@@ -98,10 +101,16 @@ LOOP:
 
 		logger.LOG_INFO("wsPort:", wsPort)
 		logger.LOG_INFO("wsPath:", wsPath)
-		wsPath = strings.ReplaceAll(strings.ReplaceAll(wsPath, "{namespace}", _WS_NAMESPACE), "{sid}", "galaxy")
+		var boxId string
+		err := pw.redisClient.StringGet(constants.REDIS_KEY_BOXID, &boxId)
+		if err != nil {
+			logger.LOG_WARN("redis 获取boxId异常")
+			continue
+		}
+		wsPath = strings.ReplaceAll(strings.ReplaceAll(wsPath, "{namespace}", _WS_NAMESPACE), "{sid}", boxId)
 		logger.LOG_INFO("wsPath decode:", wsPath)
 		u := url.URL{Scheme: "ws", Host: centerAddr + ":" + wsPort, Path: wsPath}
-		ws, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+		ws, _, err = websocket.DefaultDialer.Dial(u.String(), nil)
 		pw.wsLock.Lock()
 		if err != nil {
 			logger.LOG_WARN(err)
@@ -162,6 +171,7 @@ func (pw *PreviewWebsocket) loopHandle() {
 			logger.LOG_WARN("http.NewRequest ", reqUrl, ", error:", err.Error())
 			continue
 		}
+		req.Header.Set("TargetFrom", "center:"+msg.RequestId+","+msg.From+","+msg.To)
 		res, err := pw.e.client.Do(req)
 		if err != nil {
 			logger.LOG_WARN("cli.Do(req) ", reqUrl, ", error:", err.Error())
@@ -179,26 +189,39 @@ func (pw *PreviewWebsocket) loopHandle() {
 			continue
 		}
 		//响应
-		resMsg := make(map[string]interface{})
-		err = jsoniter.Unmarshal(resBytes, &resMsg)
+		err = pw.asyncResponse(msg.RequestId, msg.From, msg.To, resBytes)
 		if err != nil {
-			logger.LOG_WARN("json响应解析异常:", err)
-			continue
-		}
-		err = pw.ws.WriteJSON(&WsSendMessage{
-			RequestId:        msg.RequestId,
-			InteractiveModel: "ack",
-			To:               msg.From,
-			From:             msg.To,
-			Timestamp:        time.Now().UnixNano() / 1e6,
-			ContentType:      _WS_CONTENT_TYPE_JSON,
-			SendType:         _WS_SEND_MULTI,
-			Content:          resMsg,
-		})
-		if err != nil {
-			logger.LOG_WARN("websocket发送异常：", err)
-		} else {
-			logger.LOG_INFO("WS_SEND_CONTENT：", string(resBytes))
+			logger.LOG_WARN("json响应解析异常:", reqUrl, err)
 		}
 	}
+}
+
+func (pw *PreviewWebsocket) asyncResponse(requestId, to, from string, resBytes []byte) error {
+	resMsg := make(map[string]interface{})
+	err := jsoniter.Unmarshal(resBytes, &resMsg)
+	if err != nil {
+		logger.LOG_WARN("json响应解析异常:", err)
+		logger.LOG_WARN("json响应异常原消息:", string(resBytes))
+		return err
+	}
+	if pw.ws == nil {
+		return errors.New("websocket已断开")
+	}
+	err = pw.ws.WriteJSON(&WsSendMessage{
+		RequestId:        requestId,
+		InteractiveModel: "ack",
+		To:               to,
+		From:             from,
+		Timestamp:        time.Now().UnixNano() / 1e6,
+		ContentType:      _WS_CONTENT_TYPE_JSON,
+		SendType:         _WS_SEND_MULTI,
+		Content:          resMsg,
+	})
+	if err != nil {
+		logger.LOG_WARN("websocket发送异常：", err)
+		return err
+	} else {
+		logger.LOG_INFO("WS_SEND_CONTENT：", string(resBytes))
+	}
+	return nil
 }

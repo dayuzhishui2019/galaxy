@@ -98,6 +98,7 @@ type WsReceiveMessage struct {
 	Content     json.RawMessage `json:"content"`
 	Timestamp   int64           `json:"timestamp"`
 }
+
 func link(ws *websocket.Conn) {
 	ws.SetCloseHandler(func(code int, text string) error {
 		fmt.Println("conn 关闭")
@@ -113,9 +114,9 @@ READ_LOOP:
 			logger.LOG_WARN(err)
 			break READ_LOOP
 		}
-		str,_ := json.Marshal(wrap)
+		str, _ := json.Marshal(wrap)
 		fmt.Println(string(str))
-fmt.Println(len(str))
+		fmt.Println(len(str))
 	}
 }
 

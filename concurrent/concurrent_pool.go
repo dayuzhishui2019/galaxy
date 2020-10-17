@@ -1,12 +1,15 @@
 package concurrent
+
 import (
 	"context"
 	"errors"
 	"sync"
 )
+
 //通用任务协程池
 var ErrExexcutorCapacity = errors.New("协程池容量不合法")
 var ErrExexcutorClosed = errors.New("协程池已关闭")
+
 type Task interface {
 	Handle()
 }
@@ -19,6 +22,7 @@ type Executor struct {
 	cancel   context.CancelFunc
 	closed   bool
 }
+
 func (e *Executor) IsClose() bool {
 	return e.closed
 }
@@ -82,10 +86,12 @@ func (e *Executor) Close() {
 	e.closed = true
 	e.cancel()
 }
+
 type worker struct {
 	e        *Executor
 	taskChan chan func()
 }
+
 func (w *worker) run() {
 	go func() {
 		for {

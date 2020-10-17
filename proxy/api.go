@@ -8,7 +8,7 @@ type CenterProxy interface {
 }
 
 type HeartResonse struct {
-	Node  model.Node   `json:"box"`
+	Node  model.Node    `json:"box"`
 	Tasks []*model.Task `json:"tasks"`
 }
 

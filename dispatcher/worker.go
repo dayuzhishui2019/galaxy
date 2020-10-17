@@ -48,6 +48,7 @@ type Worker struct {
 
 func GetTaskAddressByResourceId(resourceId string) (taskAddress string) {
 
+	//taskResources["gbaccess"] = map[string]bool{"34020000001320000001": true, "34020000001110000001": true}
 	//taskResources["onviftask"] = map[string]bool{"34020000001320000001":true}
 
 	var taskIds []string
@@ -62,11 +63,28 @@ func GetTaskAddressByResourceId(resourceId string) (taskAddress string) {
 	if len(taskIds) > 1 {
 		logger.LOG_WARN("资源下发到了多个任务，资源ID：", resourceId, ";任务Ids：", taskIds)
 	}
-	return TASK_CONTAINER_PREFIX + taskIds[0] + strconv.Itoa(taskManagePort[taskIds[0]])
+	return TASK_CONTAINER_PREFIX + taskIds[0] + ":" + strconv.Itoa(taskManagePort[taskIds[0]]) //+ ":8000" //
 }
 
 //执行器启动
 func (w *Worker) start() {
+	//test
+	//newTask := w.td.GetTaskById(w.TaskId)
+	//if newTask == nil {
+	//	return
+	//}
+	//newTask.ID = "gbaccess"
+	//w.managePort = 8000
+	//
+	////go func(){
+	////	for{
+	//err := w.initTask(newTask)
+	//fmt.Println(err)
+	////		time.Sleep(time.Second*30)
+	////	}
+	////}()
+	//return
+
 	w.ctx, w.cancel = context.WithCancel(w.td.ctx)
 	w.managePort = getNewManagePort()
 	taskManagePort[w.TaskId] = w.managePort
@@ -119,6 +137,7 @@ func (w *Worker) bindTask() {
 			if err != nil {
 				//初始化失败，重新初始化
 				logger.LOG_WARN("任务init异常，", err)
+				//w.workingTask = nil
 				continue
 			} else {
 				w.Lock()
@@ -373,6 +392,8 @@ func (w *Worker) startTask(task *model.Task) {
 	//name
 	cmd.WriteString(" --name=" + taskDir)
 	//env
+	cmd.WriteString(" -e GALAXY_IP=" + viper.GetString("center.host") + " ")
+	cmd.WriteString(" -e GALAXY_PORT=" + viper.GetString("port") + " ")
 	cmd.WriteString(" -e MANAGE_PORT=" + strconv.Itoa(w.managePort) + " ")
 	cmd.WriteString(" -e HOST=" + viper.GetString("host") + " ")
 	cmd.WriteString(" -e LOG_LEVEL=" + viper.GetString("log.level") + " ")
