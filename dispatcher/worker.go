@@ -137,7 +137,7 @@ func (w *Worker) bindTask() {
 			if err != nil {
 				//初始化失败，重新初始化
 				logger.LOG_WARN("任务init异常，", err)
-				//w.workingTask = nil
+				w.workingTask = nil
 				continue
 			} else {
 				w.Lock()
