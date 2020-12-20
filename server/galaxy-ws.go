@@ -27,6 +27,7 @@ const _WS_CONTENT_TYPE_JSON = "application/json"
 
 type WsReceiveMessage struct {
 	RequestId   string          `json:"requestId"`
+	DayuId      string          `json:"dayuId"`
 	From        string          `json:"from"`
 	To          string          `json:"to"`
 	SendType    string          `json:"sendType"`
@@ -171,7 +172,7 @@ func (pw *PreviewWebsocket) loopHandle() {
 			logger.LOG_WARN("http.NewRequest ", reqUrl, ", error:", err.Error())
 			continue
 		}
-		req.Header.Set("TargetFrom", "center:"+msg.RequestId+","+msg.From+","+msg.To)
+		req.Header.Set("TargetFrom", "center:"+msg.DayuId+","+msg.RequestId+","+msg.From+","+msg.To)
 		res, err := pw.e.client.Do(req)
 		if err != nil {
 			logger.LOG_WARN("cli.Do(req) ", reqUrl, ", error:", err.Error())

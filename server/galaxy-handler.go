@@ -74,6 +74,7 @@ func (chs *ConfigHttpServer) submitChannel(c *gin.Context, param jsoniter.RawMes
 				"id":        "",
 				"name":      c.Name,
 				"parentId":  "",
+				"ptzType":   c.PTZType,
 			})
 		}
 		//上报中心

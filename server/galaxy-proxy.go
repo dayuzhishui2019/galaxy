@@ -50,13 +50,13 @@ func (chs *ConfigHttpServer) proxy(ctx *gin.Context) {
 		}()
 		token := strings.TrimPrefix(address, "center:")
 		ts := strings.Split(token, ",")
-		if len(ts) == 3 {
+		if len(ts) == 4 {
 			reqBytes, err := ioutil.ReadAll(ctx.Request.Body)
 			if err != nil {
 				logger.LOG_WARN("读取异步请求异常：", err)
 				return
 			}
-			err = chs.previewWs.asyncResponse(ts[0], ts[1], ts[2], reqBytes)
+			err = chs.previewWs.asyncResponse(ts[1], ts[2], ts[3], reqBytes)
 			if err != nil {
 				logger.LOG_WARN("异步响应中心异常：", err)
 			}

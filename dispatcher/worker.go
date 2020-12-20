@@ -299,7 +299,10 @@ func (w *Worker) refreshResource(oldTask, newTask *model.Task) error {
 	}
 
 	//缓存任务资源关系
-	taskResources[newTask.ID] = newResourceIds
+	if newTask.AccessType == "28181server" {
+		logger.LOG_WARN("记录任务设备映射关系：", newTask.ID)
+		taskResources[newTask.ID] = newResourceIds
+	}
 	return nil
 }
 
